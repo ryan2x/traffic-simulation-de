@@ -61,3 +61,6 @@ competition/2017_10_18_notWon
 # eclipse settings
 /.settings/
 /.project
+
+# idea
+/.idea/

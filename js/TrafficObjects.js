@@ -267,7 +267,7 @@ TrafficObjects.prototype.calcDepotPositions=function(canvas){
       this.trafficObj[i].yPix=this.trafficObj[i].yPixDepot;
     }
   }
-}
+};
 
 
 //######################################################################
