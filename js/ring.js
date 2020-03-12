@@ -22,7 +22,7 @@ var userCanDropObjects=true;
 
 // override standard dettings control_gui.js
 
-density=0.03;  // default 0.03
+density=0.02;  // default 0.03
 slider_density.value=1000*density;
 slider_densityVal.innerHTML=1000*density+"/km";
 
@@ -97,24 +97,12 @@ function updateDimensions(){ // if viewport or sizePhys changed
 // => road becomes more compact for smaller screens
 
 var laneWidth=8; // remains constant => road becomes more compact for smaller
-var nLanes_main=3;
+var nLanes_main=4;
 
 var car_length=7; // car length in m
 var car_width=6; // car width in m
 var truck_length=15; // trucks
 var truck_width=7; 
-
-
-// on constructing road, road elements are gridded and interna
-// road.traj_xy(u) are generated. The, traj_xy*Init(u) obsolete
-
-function traj_x(u){
-    return center_xPhys + roadRadius*Math.cos(u/roadRadius);
-}
-
-function traj_y(u){
-    return center_yPhys + roadRadius*Math.sin(u/roadRadius);
-}
 
 
 //##################################################################
@@ -126,19 +114,24 @@ var roadID=1;
 var speedInit=20; // IC for speed
 var fracTruckToleratedMismatch=0.02; // avoid sudden changes in open systems
 
-var mainroad=new road(roadID,mainroadLen,laneWidth,nLanes_main,traj_x,traj_y,
-		      density,speedInit,fracTruck,isRing,userCanDistortRoads);
-network[0]=mainroad;  // network declared in canvas_gui.js
+var my_network = new RingNetwork(roadID, roadRadius, {x: center_xPhys, y: center_yPhys}, {});
 
+// var mainroad=new road(roadID,mainroadLen,laneWidth,nLanes_main,traj_x,traj_y,
+// 		      density,speedInit,fracTruck,isRing,userCanDistortRoads);
+
+// var mainroad = my_network.network[0]; // for the moment, we will remove it soon
+// network[0]=mainroad;  // network declared in canvas_gui.js
+network = network.concat(my_network.network);
 
 
 //  introduce stationary detectors
 
 var detectors=[];
-for(var idet=0; idet<4; idet++){
-  detectors[idet]=new stationaryDetector(mainroad,
-					  (0.125+idet*0.25)*mainroadLen,10);
-}
+// for(var idet=0; idet<4; idet++){
+//   detectors[idet]=new stationaryDetector(mainroad,
+// 					  (0.125+idet*0.25)*mainroadLen,10);
+// }
+detectors = detectors.concat(my_network.detectors);
 
 
 
@@ -247,7 +240,7 @@ roadImg2=roadImgs2[nLanes_main-1];
 //############################################
 
 // TrafficObjects(canvas,nTL,nLimit,xRelDepot,yRelDepot,nRow,nCol)
-var trafficObjs=new TrafficObjects(canvas,2,2,0.40,0.50,3,2);
+var trafficObjs=my_network.trafficObjs;
 
 
 //############################################
@@ -270,35 +263,8 @@ function updateSim(){
     itime++;
     isSmartphone=mqSmartphone();
 
+    my_network.updateSim(time, dt);
 
-  // (2) transfer effects from slider interaction and mandatory regions
-  // to the vehicles and models
-
-
-    mainroad.updateTruckFrac(fracTruck, fracTruckToleratedMismatch);
-    mainroad.updateModelsOfAllVehicles(longModelCar,longModelTruck,
-				       LCModelCar,LCModelTruck,
-				       LCModelMandatory);
-    mainroad.updateDensity(density);
-
-  // (2a) update moveable speed limits
-
-  mainroad.updateSpeedlimits(trafficObjs); 
-
-
-    // do central simulation update of vehicles
-
-    mainroad.updateLastLCtimes(dt);
-    mainroad.calcAccelerations();  
-    mainroad.changeLanes();         
-    mainroad.updateSpeedPositions();
-
-    //if(itime<2){mainroad.writeVehicleLongModels();}
-    //if(itime<2){mainroad.writeVehicleLCModels();}
-
-    for(var iDet=0; iDet<detectors.length; iDet++){
-	detectors[iDet].update(time,dt);
-    }
 
   //xxxNew
   
@@ -383,20 +349,13 @@ function drawSim() {
     }
   }
 
-  // (3) draw road and possibly traffic lights afterwards (before vehs)
- 
-  var changedGeometry=userCanvasManip || hasChanged||(itime<=1);
-  mainroad.draw(roadImg1,roadImg2,scale,changedGeometry);
-
-    // (4) draw vehicles
-
-  mainroad.drawVehicles(carImg,truckImg,obstacleImgs,scale,vmin_col,vmax_col);
-
-  // (5a) draw traffic objects 
-
-  if(userCanDropObjects&&(!isSmartphone)){
-    trafficObjs.draw(scale);
-  }
+  //
+  my_network.drawSim({
+      userCanvasManip: userCanvasManip,
+        hasChanged: hasChanged,
+        itime:  itime,
+      scale: scale
+  });
 
   // (5b) draw speedlimit-change select box
 
