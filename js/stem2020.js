@@ -74,6 +74,8 @@ var isSmartphone=mqSmartphone();
 
 var my_network = new CrossRoadNetwork(canvas, {});
 
+let mainroad = my_network.mainroad;
+
 // var mainroad=new road(roadID,mainroadLen,laneWidth,nLanes_main,traj_x,traj_y,
 // 		      density,speedInit,fracTruck,isRing,userCanDistortRoads);
 

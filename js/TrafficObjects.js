@@ -529,7 +529,7 @@ TrafficObjects.prototype.deactivate=function(obj){
     obj.road="null";
     obj.isActive=false; // for safety last cmd
   }
-}
+};
 
 
 
