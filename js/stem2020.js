@@ -20,6 +20,22 @@ var userCanDropObjects=true;
 ######################################################*
 */
 
+// the following remains constant
+// => road becomes more compact for smaller screens
+
+var laneWidth=8; // remains constant => road becomes more compact for smaller
+var nLanes_main=2;
+
+var car_length=7; // car length in m
+var car_width=6; // car width in m
+var truck_length=15; // trucks
+var truck_width=7;
+
+var speedInit=20; // IC for speed
+var fracTruckToleratedMismatch=0.02; // avoid sudden changes in open systems
+
+var drawColormap=false;
+
 // override standard settings control_gui.js
 
 density=0.02;  // default 0.03
@@ -34,7 +50,7 @@ slider_fracTruckVal.innerHTML=100*fracTruck+"%";
 // Global overall scenario settings and graphics objects
 
 
-var scenarioString="Ring";
+var scenarioString="CrossRoad";
 console.log("\n\nstart main: scenarioString=",scenarioString);
 
 var simDivWindow=document.getElementById("contents");
