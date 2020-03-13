@@ -256,11 +256,17 @@ CrossRoadNetwork.prototype.buildRoads = function(canvas, options) {
     });
 
     this.mainroad = mainroad;
-    this.network = [mainroad, curve1.road, curve2.road];
+    this.network = [mainroad, curve1.road, curve2.road,
+        north_road.road, south_road.road,
+    ];
     this.roads = {
-        // east_road: east_road.road,
+        east_road: east_road.road,
         south_road: south_road.road,
         north_road: north_road.road,
+    };
+    this.turns = {
+        west_to_south: curve1.road,
+        west_to_north: curve2.road,
     };
     //
     // introduce stationary detectors
@@ -318,19 +324,19 @@ CrossRoadNetwork.prototype.buildRoads = function(canvas, options) {
 };
 
 CrossRoadNetwork.prototype.updateSim = function(time, dt) {
-    var mainroad = this.network[0];
-    let curve1 = this.network[1];
-    let curve2 = this.network[2];
+    // var mainroad = this.network[0];
+    // let curve1 = this.network[1];
+    // let curve2 = this.network[2];
 
     // (2) transfer effects from slider interaction and mandatory regions
     // to the vehicles and models
 
 
-    mainroad.updateTruckFrac(fracTruck, fracTruckToleratedMismatch);
-    mainroad.updateModelsOfAllVehicles(longModelCar,longModelTruck,
-        LCModelCar,LCModelTruck,
-        LCModelMandatory);
-    mainroad.updateDensity(density);
+    // mainroad.updateTruckFrac(fracTruck, fracTruckToleratedMismatch);
+    // mainroad.updateModelsOfAllVehicles(longModelCar,longModelTruck,
+    //     LCModelCar,LCModelTruck,
+    //     LCModelMandatory);
+    // mainroad.updateDensity(density);
 
     for (const item of Object.values(this.roads)) {
         item.updateTruckFrac(fracTruck, fracTruckToleratedMismatch);
@@ -339,26 +345,31 @@ CrossRoadNetwork.prototype.updateSim = function(time, dt) {
             LCModelMandatory);
         item.updateDensity(density);
     }
+    for (const item of Object.values(this.turns)) {
+        item.updateModelsOfAllVehicles(longModelCar,longModelTruck,
+            LCModelCar,LCModelTruck,
+            LCModelMandatory);
+    }
 
     // (2a) update moveable speed limits
 
-    mainroad.updateSpeedlimits(this.trafficObjs);
+    // mainroad.updateSpeedlimits(this.trafficObjs);
     for (const item of Object.values(this.roads)) {
         item.updateSpeedlimits(this.trafficObjs);
     }
 
-    mainroad.calcAccelerations();
+    // mainroad.calcAccelerations();
     for (const item of Object.values(this.roads)) {
         item.calcAccelerations();
     }
-    curve1.calcAccelerations();
-    curve2.calcAccelerations();
-
+    for (const item of Object.values(this.turns)) {
+        item.calcAccelerations();
+    }
 
 
     // inflow BC
     let q1=0.3*mainFrac*qIn;
-    mainroad.updateBCup(q1,dt);
+    // mainroad.updateBCup(q1,dt);
     for (const item of Object.values(this.roads)) {
         item.updateBCup(q1,dt);
     }
@@ -366,12 +377,14 @@ CrossRoadNetwork.prototype.updateSim = function(time, dt) {
     // outflow BC
     // mainroad.updateBCdown();
 
-    mainroad.updateLastLCtimes(dt);
-    curve1.updateLastLCtimes(dt);
-    curve2.updateLastLCtimes(dt);
+    // mainroad.updateLastLCtimes(dt);
     for (const item of Object.values(this.roads)) {
         item.updateLastLCtimes(dt);
     }
+    for (const item of Object.values(this.turns)) {
+        item.updateLastLCtimes(dt);
+    }
+
 
 
     //##############################################################
@@ -393,14 +406,34 @@ CrossRoadNetwork.prototype.updateSim = function(time, dt) {
         rCorner, rampOnSize,
     } = this.attrs;
 
+    const {
+        north_road,
+        south_road,
+        east_road,
+    } = this.roads;
+    const {
+        west_to_south,
+        west_to_north,
+    } = this.turns;
+
     // mergeDiverge(newRoad,offset,uBegin,uEnd, isMerge,toRight,ignoreRoute,prioOther, prioOwn)
-    mainroad.mergeDiverge(curve1, rampOnSize - (mainroadLen/2),
+    east_road.mergeDiverge(west_to_south, rampOnSize - (mainroadLen/2),
         mainroadLen/2-rampOnSize*0.8, mainroadLen/2-rampOnSize*0.1,
         true, false, false,
         true, false);
-    mainroad.mergeDiverge(curve2, rampOnSize-(mainroadLen/2),
+    east_road.mergeDiverge(west_to_north, rampOnSize-(mainroadLen/2),
         mainroadLen/2-rCorner*1.1, mainroadLen/2-rCorner,
         true, true, false,
+        true, false);
+
+    // some parameters might be wrong here...
+    west_to_south.mergeDiverge(south_road, (mainroadLen/2) - west_to_south.roadLen,
+        west_to_south.roadLen - 1.0, west_to_south.roadLen,
+        true, false, false,
+        true, false);
+    west_to_south.mergeDiverge(north_road, (mainroadLen/2) - west_to_south.roadLen,
+        west_to_south.roadLen - 1.0, west_to_south.roadLen,
+        true, false, false,
         true, false);
 
     // do central simulation update of vehicles
@@ -408,12 +441,13 @@ CrossRoadNetwork.prototype.updateSim = function(time, dt) {
     // // only if multilane;  not needed for diverge
     // mainroad.changeLanes();
 
-    mainroad.updateSpeedPositions();
-    for (const [key, item] of Object.entries(this.roads)) {
+    // mainroad.updateSpeedPositions();
+    for (const item of Object.values(this.roads)) {
         item.updateSpeedPositions();
     }
-    curve1.updateSpeedPositions();
-    curve2.updateSpeedPositions();
+    for (const item of Object.values(this.turns)) {
+        item.updateSpeedPositions();
+    }
 
     //if(itime<2){mainroad.writeVehicleLongModels();}
     //if(itime<2){mainroad.writeVehicleLCModels();}
@@ -432,35 +466,33 @@ CrossRoadNetwork.prototype.drawSim = function (canvas, options) {
         scale,
     } = options;
     //
-    let mainroad = this.network[0];
-    let curve1 = this.network[1];
-    let curve2 = this.network[2];
 
     var trafficObjs = this.trafficObjs;
 
     // (3) draw road and possibly traffic lights afterwards (before vehs)
 
     var changedGeometry=userCanvasManip || hasChanged||(itime<=1);
-    mainroad.draw(roadImg1,roadImg1,scale,changedGeometry);
     for (const item of Object.values(this.roads)) {
         item.draw(roadImg1,roadImg1,scale,changedGeometry);
     }
-    curve1.draw(roadImg1,roadImg1,scale,changedGeometry);
-    curve2.draw(roadImg1,roadImg1,scale,changedGeometry);
+    for (const item of Object.values(this.turns)) {
+        item.draw(roadImg1,roadImg1,scale,changedGeometry);
+    }
 
     // (4) draw vehicles
 // these are not really necessary global variables
     var vmin_col=0; // min speed for speed colormap (drawn in red)
     var vmax_col=100/3.6; // max speed for speed colormap (drawn in blue-violet)
 
-    curve1.drawVehicles(carImg,truckImg,obstacleImgs,scale,vmin_col,vmax_col);
-    curve2.drawVehicles(carImg,truckImg,obstacleImgs,scale,vmin_col,vmax_col);
-
-    for (const [key, item] of Object.entries(this.roads)) {
+    for (const item of Object.values(this.roads)) {
         item.drawVehicles(carImg,truckImg,obstacleImgs,scale,vmin_col,vmax_col);
     }
 
-    mainroad.drawVehicles(carImg,truckImg,obstacleImgs,scale,vmin_col,vmax_col);
+    for (const item of Object.values(this.turns)) {
+        item.drawVehicles(carImg,truckImg,obstacleImgs,scale,vmin_col,vmax_col);
+    }
+
+    // mainroad.drawVehicles(carImg,truckImg,obstacleImgs,scale,vmin_col,vmax_col);
 
     // (5a) draw traffic objects
 
